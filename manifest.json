@@ -1,0 +1,16 @@
+{
+  "name": "EV Cost S07",
+  "short_name": "EV Cost S07",
+  "description": "Home charging costs for the Deepal S07, per charge, day and week, against diesel.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0d1422",
+  "theme_color": "#0d1422",
+  "icons": [
+    {"src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+    {"src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ]
+}

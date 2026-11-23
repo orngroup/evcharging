@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>EV Cost S07</title>
+<meta name="theme-color" content="#0d1422">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="EV Cost S07">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Layout idea: a phone app. Sticky header with month stepper, one scrolling column of
+   panels, fixed bottom tab bar. Teal always means off-peak, amber always means peak,
+   slate always means diesel. */
+:root{
+  --bg:#eef1f5; --surface:#ffffff; --sunk:#f4f6f9; --ink:#121a2b; --muted:#566176; --line:#d9dee7;
+  --accent:#1c5bb8; --off:#0b8f7e; --peak:#c9741c; --diesel:#667085; --good:#0f7a57;
+  --display:"Outfit","Figtree",system-ui,sans-serif;
+  --body:"Figtree",system-ui,-apple-system,"Segoe UI",sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0d1422; --surface:#172033; --sunk:#111a2b; --ink:#e9eef7; --muted:#9aa6ba; --line:#28344c;
+    --accent:#77adff; --off:#35d0b5; --peak:#f0a04b; --diesel:#93a0b5; --good:#4cd6a0;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0d1422; --surface:#172033; --sunk:#111a2b; --ink:#e9eef7; --muted:#9aa6ba; --line:#28344c;
+  --accent:#77adff; --off:#35d0b5; --peak:#f0a04b; --diesel:#93a0b5; --good:#4cd6a0;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.45;
+  -webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.app{max-width:560px;margin:0 auto;min-height:100%;display:flex;flex-direction:column}
+header{position:sticky;top:0;z-index:5;background:var(--bg);
+  padding:calc(env(safe-area-inset-top) + 12px) 16px 10px;display:flex;align-items:center;justify-content:space-between;gap:12px;
+  border-bottom:1px solid var(--line)}
+.brand{font-family:var(--display);font-weight:700;font-size:19px;letter-spacing:.2px;white-space:nowrap}
+.brand span{color:var(--off)}
+.stepper{display:flex;align-items:center;gap:2px;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:2px}
+.stepper button{border:0;background:none;width:34px;height:34px;border-radius:999px;font-size:18px;color:var(--muted)}
+.stepper button:disabled{opacity:.3}
+.stepper .lbl{border:0;background:none;min-width:84px;height:34px;text-align:center;font-weight:600;font-size:14px;width:auto;padding:0 4px;color:var(--ink)}
+main{flex:1;padding:14px 16px calc(env(safe-area-inset-bottom) + 92px);display:flex;flex-direction:column;gap:12px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px}
+.panel h2{margin:0 0 10px;font-family:var(--display);font-size:13px;font-weight:600;letter-spacing:.9px;text-transform:uppercase;color:var(--muted)}
+.num{font-family:var(--display);font-variant-numeric:tabular-nums}
+.hero{display:flex;flex-direction:column;gap:4px}
+.hero .big{font-family:var(--display);font-weight:700;font-size:46px;line-height:1.05;font-variant-numeric:tabular-nums}
+.hero .sub{color:var(--muted)}
+.kv{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+.kv div{background:var(--sunk);border-radius:12px;padding:10px}
+.kv b{display:block;font-family:var(--display);font-size:18px;font-weight:600;font-variant-numeric:tabular-nums}
+.kv small{color:var(--muted);font-size:12px}
+.split{display:flex;height:14px;border-radius:999px;overflow:hidden;background:var(--sunk);gap:2px}
+.split i{display:block;height:100%}
+.split .o{background:var(--off)} .split .p{background:var(--peak)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:8px;font-size:13px;color:var(--muted)}
+.legend b{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
+.dot{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:6px}
+.dot.o{background:var(--off)} .dot.p{background:var(--peak)} .dot.d{background:var(--diesel)}
+.cmp{display:flex;flex-direction:column;gap:10px}
+.cmp .row{display:grid;grid-template-columns:62px 1fr auto;align-items:center;gap:10px}
+.cmp .track{height:22px;border-radius:6px;background:var(--sunk);overflow:hidden}
+.cmp .fill{height:100%;border-radius:6px;min-width:3px}
+.cmp .fill.ev{background:var(--off)} .cmp .fill.di{background:var(--diesel)}
+.cmp .amt{font-family:var(--display);font-weight:600;font-variant-numeric:tabular-nums;font-size:17px;text-align:right}
+.cmp small{color:var(--muted)}
+.saved{margin-top:12px;padding:10px 12px;border-radius:12px;background:var(--sunk);border-left:4px solid var(--good)}
+.saved b{color:var(--good);font-family:var(--display);font-size:18px}
+.saved.neg{border-left-color:var(--peak)} .saved.neg b{color:var(--peak)}
+.tip{border-left:4px solid var(--peak)}
+.tip p{margin:0}
+.tip p+p{margin-top:6px;color:var(--muted);font-size:13.5px}
+.note{color:var(--muted);font-size:13px;margin:8px 0 0}
+/* chart */
+.chart{display:grid;grid-template-columns:auto 1fr;gap:6px}
+.yax{display:flex;flex-direction:column;justify-content:space-between;font-size:11px;color:var(--muted);text-align:right;height:150px;font-variant-numeric:tabular-nums}
+.plot{position:relative;height:150px;display:flex;align-items:flex-end;gap:3px;border-bottom:1px solid var(--line);
+  background:linear-gradient(to bottom,var(--line) 1px,transparent 1px) 0 0/100% 50%}
+.bar{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:flex-end;height:100%;border:0;background:none;padding:0}
+.bar i{display:block;width:100%}
+.bar i.p{background:var(--peak);border-radius:3px 3px 0 0}
+.bar i.o{background:var(--off)}
+.bar i.o:first-child{border-radius:3px 3px 0 0}
+.bar.sel i{outline:2px solid var(--ink);outline-offset:-1px}
+.xax{grid-column:2;display:flex;gap:3px;font-size:10.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.xax span{flex:1;min-width:0;text-align:center;overflow:hidden}
+.pick{margin-top:10px;font-size:13.5px;min-height:20px}
+/* charges */
+.chg{display:flex;flex-direction:column;gap:8px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px;width:100%;text-align:left;display:block}
+.card.zero{opacity:.62;padding:9px 14px}
+.card .top{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.card .d{font-weight:600}
+.card .c{font-family:var(--display);font-weight:600;font-size:19px;font-variant-numeric:tabular-nums}
+.card .meta{color:var(--muted);font-size:13px;margin-top:2px}
+.card .split{height:8px;margin-top:9px}
+.card .more{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);display:flex;flex-direction:column;gap:8px;font-size:13.5px}
+.seg{display:flex;background:var(--sunk);border-radius:10px;padding:3px;gap:3px}
+.seg button{flex:1;border:0;background:none;border-radius:8px;padding:8px 6px;font-size:13px;color:var(--muted);font-weight:600}
+.seg button.on{background:var(--surface);color:var(--ink);box-shadow:0 0 0 1px var(--line)}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:9px 14px;font-weight:600;font-size:14px}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+:root[data-theme="dark"] .btn.pri{color:#0d1422}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .btn.pri{color:#0d1422}}
+.btn.warn{color:var(--peak)}
+.btnrow{display:flex;flex-wrap:wrap;gap:8px}
+/* tables */
+.tw{overflow-x:auto;margin:0 -6px}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums;font-size:13.5px}
+th,td{padding:8px 6px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--line)}
+th{font-size:11.5px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+th:first-child,td:first-child{text-align:left}
+tfoot td{font-weight:700;border-bottom:0}
+td.o{color:var(--off)} td.p{color:var(--peak)}
+.wk{display:flex;flex-direction:column;gap:10px}
+.wk .panel h3{margin:0 0 2px;font-family:var(--display);font-size:16px;font-weight:600}
+/* forms */
+.form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.form label{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--muted);font-weight:500}
+.form .wide{grid-column:1/-1}
+input,select,textarea{background:var(--sunk);border:1px solid var(--line);border-radius:10px;padding:9px 10px;width:100%;font-size:16px}
+textarea{min-height:92px;font-size:14px;font-family:ui-monospace,Menlo,monospace}
+.msg{font-size:13.5px;margin-top:8px;min-height:18px}
+.msg.ok{color:var(--good)} .msg.bad{color:var(--peak)}
+.odo{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
+.odo button{border:0;background:none;color:var(--muted);font-size:13px;padding:4px 6px}
+nav{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surface);border-top:1px solid var(--line);
+  padding:6px 8px calc(env(safe-area-inset-bottom) + 6px)}
+nav .in{max-width:560px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr);gap:2px}
+nav button{border:0;background:none;padding:8px 2px;border-radius:10px;font-size:12px;font-weight:600;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:3px}
+nav button svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+nav button.on{color:var(--accent)}
+.empty{color:var(--muted);text-align:center;padding:28px 10px}
+@media (max-width:360px){.kv{grid-template-columns:1fr 1fr}.hero .big{font-size:40px}}
+@media (prefers-reduced-motion:no-preference){.cmp .fill,.split i{transition:width .3s}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand">EV Cost <span>S07</span></div>
+    <div class="stepper">
+      <button type="button" id="prev" aria-label="Previous month">&#8249;</button>
+      <button type="button" class="lbl" id="period" aria-label="Switch between one month and all time"></button>
+      <button type="button" id="next" aria-label="Next month">&#8250;</button>
+    </div>
+  </header>
+  <main id="view"></main>
+</div>
+<nav><div class="in" id="tabs">
+  <button type="button" data-tab="summary"><svg viewBox="0 0 24 24"><path d="M4 13a8 8 0 1 1 16 0"/><path d="M12 13l4-5"/><path d="M5 19h14"/></svg>Summary</button>
+  <button type="button" data-tab="charges"><svg viewBox="0 0 24 24"><path d="M13 3L5 14h6l-1 7 8-11h-6z"/></svg>Charges</button>
+  <button type="button" data-tab="days"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>Days</button>
+  <button type="button" data-tab="weeks"><svg viewBox="0 0 24 24"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>Weeks</button>
+  <button type="button" data-tab="settings"><svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg>Settings</button>
+</div></nav>
+
+<script>
+/* ---------- Data ---------- */
+/* Each charge: [plug-in date, plug-in time, minutes plugged in, kWh] exactly as the SALUS history shows it. */
+const SEED = [
+  ["2026-11-21","17:56",1274,15.3],
+  ["2026-11-20","18:17",1102,19.6],
+  ["2026-11-19","16:33",1174,70.7],
+  ["2026-11-18","18:37",236,26.8],
+  ["2026-11-18","17:47",49,0],
+  ["2026-11-17","17:54",791,56.5],
+  ["2026-11-16","17:48",878,21.3],
+  ["2026-11-15","16:39",862,28.2],
+  ["2026-11-15","15:39",56,0],
+  ["2026-11-14","18:30",738,19.4],
+  ["2026-11-14","09:07",237,21.0],
+  ["2026-11-13","19:34",779,66.6],
+  ["2026-11-13","19:13",7,0],
+  ["2026-11-13","19:00",12,0],
+  ["2026-11-07","14:35",11,1.4]
+];
+const SEED_ODO = [["2026-11-23",805]];
+const DEF = {offRate:6.66, peakRate:35.21, offStart:"23:00", offEnd:"06:00", kw:7.4, mode:"window",
+             diesel:2.00, mpg:45, fallbackEff:3.0, startOdo:0};
+const KEY = "evcost-s07-v1";
+const L_PER_GAL = 4.54609;
+
+let st = {set:{}, extra:[], hidden:[], ov:{}, odo:[], odoHidden:[]};
+try { const raw = localStorage.getItem(KEY); if (raw) st = Object.assign(st, JSON.parse(raw)); } catch(e) {}
+function save(){ try { localStorage.setItem(KEY, JSON.stringify(st)); } catch(e) {} }
+function S(){ return Object.assign({}, DEF, st.set); }
+
+/* ---------- Pure cost logic ---------- */
+function hm(s){ const p = String(s).split(":"); return (+p[0])*60 + (+p[1]); }
+function fmtHM(m){ m = ((Math.round(m)%1440)+1440)%1440; return String(Math.floor(m/60)).padStart(2,"0")+":"+String(m%60).padStart(2,"0"); }
+function isOff(m, a, b){ m = ((m%1440)+1440)%1440; return a <= b ? (m >= a && m < b) : (m >= a || m < b); }
+
+/* Works out when the energy went in and prices each minute at the rate for that time of day.
+   mode "plug": charging starts the moment the car is plugged in.
+   mode "sched": charging waits for the off-peak window to open.
+   The charger runs at s.kw until the session's kWh are delivered, never longer than the car was plugged in. */
+function costOf(c, s, ov){
+  ov = ov || {};
+  const a = hm(s.offStart), b = hm(s.offEnd), start = hm(c.t), dur = Math.max(1, c.dur);
+  const want = ov.mode || s.mode;
+  let need = c.kwh > 0 ? Math.min(dur, Math.max(1, Math.round(c.kwh / s.kw * 60))) : 0;
+  let begin = start, mode = want;
+  if ((want === "sched" || want === "window") && c.kwh > 0) {
+    let w = 0; while (w < dur && !isOff(start + w, a, b)) w++;
+    if (w < dur) { begin = start + w; need = Math.min(need, dur - w); } else if (want === "sched") mode = "plug";
+  }
+  let offMin = 0; for (let i = 0; i < need; i++) if (isOff(begin + i, a, b)) offMin++;
+  const offK = mode === "window" ? c.kwh : (need ? c.kwh * offMin / need : 0), peakK = c.kwh - offK;
+  let cost = (offK * s.offRate + peakK * s.peakRate) / 100;
+  const manual = ov.cost != null && ov.cost !== "";
+  if (manual) cost = +ov.cost;
+  return {offK, peakK, cost, best: c.kwh * s.offRate / 100, begin, end: begin + need, mode, manual};
+}
+function dieselCost(miles, s){ return miles / s.mpg * L_PER_GAL * s.diesel; }
+
+/* ---------- Derived data ---------- */
+function allCharges(){
+  const map = new Map();
+  SEED.concat(st.extra).forEach(r => { const k = r[0]+" "+r[1]; map.set(k, {key:k, d:r[0], t:r[1], dur:+r[2], kwh:+r[3]}); });
+  st.hidden.forEach(k => map.delete(k));
+  return [...map.values()].sort((x,y) => x.key < y.key ? 1 : -1);
+}
+function odoList(){
+  const map = new Map();
+  SEED_ODO.concat(st.odo).forEach(r => map.set(r[0], +r[1]));
+  st.odoHidden.forEach(d => map.delete(d));
+  return [...map.entries()].map(e => ({d:e[0], mi:e[1]})).sort((x,y) => x.d < y.d ? -1 : 1);
+}
+/* Miles per kWh from the wall: odometer miles divided by every kWh charged up to the latest reading. */
+function efficiency(){
+  const s = S(), od = odoList(), ch = allCharges();
+  if (od.length) {
+    const last = od[od.length-1], miles = last.mi - s.startOdo;
+    const k = ch.filter(c => c.d <= last.d).reduce((n,c) => n + c.kwh, 0);
+    if (miles > 0 && k > 0) return {v: miles/k, measured:true, miles, k, date:last.d, odo:last.mi};
+  }
+  return {v: s.fallbackEff, measured:false};
+}
+function enrich(list){
+  const s = S(), e = efficiency();
+  return list.map(c => { const r = costOf(c, s, st.ov[c.key]); const miles = c.kwh * e.v;
+    return Object.assign({}, c, r, {miles, diesel: dieselCost(miles, s)}); });
+}
+function total(rows){
+  const t = {kwh:0, offK:0, peakK:0, cost:0, best:0, miles:0, diesel:0, n:0};
+  rows.forEach(r => { t.kwh += r.kwh; t.offK += r.offK; t.peakK += r.peakK; t.cost += r.cost; t.best += r.best;
+    t.miles += r.miles; t.diesel += r.diesel; if (r.kwh > 0) t.n++; });
+  return t;
+}
+function groupBy(rows, fn){
+  const m = new Map(); rows.forEach(r => { const k = fn(r); if (!m.has(k)) m.set(k, []); m.get(k).push(r); });
+  return [...m.entries()].sort((x,y) => x[0] < y[0] ? 1 : -1);
+}
+
+/* ---------- Dates and formats ---------- */
+const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const DOW = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+function dObj(d){ const p = d.split("-"); return new Date(Date.UTC(+p[0], +p[1]-1, +p[2])); }
+function iso(dt){ return dt.toISOString().slice(0,10); }
+function addDays(d, n){ const x = dObj(d); x.setUTCDate(x.getUTCDate()+n); return iso(x); }
+function nice(d){ const x = dObj(d); return DOW[x.getUTCDay()]+" "+x.getUTCDate()+" "+MON[x.getUTCMonth()]; }
+function short(d){ const x = dObj(d); return x.getUTCDate()+" "+MON[x.getUTCMonth()]; }
+function weekStart(d){ const x = dObj(d); return addDays(d, -((x.getUTCDay()+6)%7)); }
+function today(){ const n = new Date(); return n.getFullYear()+"-"+String(n.getMonth()+1).padStart(2,"0")+"-"+String(n.getDate()).padStart(2,"0"); }
+const gbp = n => (n < 0 ? "-" : "") + "£" + Math.abs(n).toFixed(2);
+const k1 = n => n.toFixed(1);
+const durTxt = m => m >= 60 ? Math.floor(m/60)+"h "+(m%60)+"m" : m+"m";
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+/* ---------- View state ---------- */
+let tab = "summary", open = null, picked = null, armed = null, flash = null;
+let month = null;           // "YYYY-MM" or "all"
+function months(){ return [...new Set(allCharges().map(c => c.d.slice(0,7)))].sort(); }
+function inPeriod(c){ return month === "all" || c.d.slice(0,7) === month; }
+function periodName(){ if (month === "all") return "All time"; const p = month.split("-"); return MON[+p[1]-1]+" "+p[0]; }
+
+/* ---------- Rendering ---------- */
+function splitBar(o, p){
+  const t = o + p; if (t <= 0) return "";
+  return '<div class="split" role="img" aria-label="Off-peak '+k1(o)+' kWh, peak '+k1(p)+' kWh">'+
+    (o > 0 ? '<i class="o" style="width:'+(o/t*100)+'%"></i>' : "")+(p > 0 ? '<i class="p" style="width:'+(p/t*100)+'%"></i>' : "")+'</div>';
+}
+function viewSummary(rows){
+  const s = S(), t = total(rows), e = efficiency();
+  if (!rows.length) return '<div class="panel empty">No charges in '+esc(periodName())+'. Add one in Settings.</div>';
+  const avg = t.kwh ? t.cost/t.kwh*100 : 0, ppm = t.miles ? t.cost/t.miles*100 : 0, dpm = t.miles ? t.diesel/t.miles*100 : 0;
+  const mx = Math.max(t.cost, t.diesel, 0.01), saving = t.diesel - t.cost;
+  let h = '<section class="panel hero"><h2>Charging cost · '+esc(periodName())+'</h2>'+
+    '<div class="big">'+gbp(t.cost)+'</div>'+
+    '<div class="sub">'+k1(t.kwh)+' kWh over '+t.n+' charge'+(t.n===1?"":"s")+', averaging '+avg.toFixed(1)+'p per kWh</div>'+
+    '<div class="kv"><div><b>'+Math.round(t.miles)+'</b><small>miles '+(e.measured?"driven":"estimated")+'</small></div>'+
+    '<div><b>'+ppm.toFixed(1)+'p</b><small>per mile</small></div>'+
+    '<div><b>'+e.v.toFixed(2)+'</b><small>miles per kWh</small></div></div></section>';
+
+  h += '<section class="panel"><h2>Electric against diesel</h2><div class="cmp">'+
+    '<div class="row"><span>Electric</span><div class="track"><div class="fill ev" style="width:'+(t.cost/mx*100)+'%"></div></div><span class="amt">'+gbp(t.cost)+'</span></div>'+
+    '<div class="row"><span>Diesel</span><div class="track"><div class="fill di" style="width:'+(t.diesel/mx*100)+'%"></div></div><span class="amt">'+gbp(t.diesel)+'</span></div></div>'+
+    '<div class="saved'+(saving<0?" neg":"")+'">'+(saving>=0?'Electric saved <b>'+gbp(saving)+'</b>':'Diesel would have been <b>'+gbp(-saving)+'</b> cheaper')+
+    ' over '+Math.round(t.miles)+' miles</div>'+
+    '<p class="note">Diesel at £'+s.diesel.toFixed(2)+' a litre and '+s.mpg+' mpg costs '+dpm.toFixed(1)+'p a mile ('+
+    (t.miles/s.mpg*L_PER_GAL).toFixed(1)+' litres for these miles).</p></section>';
+
+  h += '<section class="panel"><h2>When the energy went in</h2>'+splitBar(t.offK, t.peakK)+
+    '<div class="legend"><span><i class="dot o"></i>Off-peak '+s.offRate+'p <b>'+k1(t.offK)+' kWh · '+gbp(t.offK*s.offRate/100)+'</b></span>'+
+    '<span><i class="dot p"></i>Peak '+s.peakRate+'p <b>'+k1(t.peakK)+' kWh · '+gbp(t.peakK*s.peakRate/100)+'</b></span></div></section>';
+
+  if (t.cost - t.best > 0.5) {
+    const bestDiesel = t.diesel - t.best;
+    h += '<section class="panel tip"><h2>Off-peak opportunity</h2><p>The same '+k1(t.kwh)+' kWh taken entirely between '+esc(s.offStart)+' and '+esc(s.offEnd)+
+      ' would have cost <b>'+gbp(t.best)+'</b>, which is <b>'+gbp(t.cost-t.best)+'</b> less.</p>'+
+      '<p>'+(s.mode==="sched" ? 'The peak-rate energy came from charges unplugged before '+esc(s.offStart)+' and from charges too large for one night. At '+s.kw+' kW one off-peak night holds about '+Math.round(offHours(s)*s.kw)+' kWh.' :
+      'Set the SALUS schedule to start at '+esc(s.offStart)+'. At '+s.kw+' kW one off-peak night holds about '+Math.round(offHours(s)*s.kw)+' kWh.')+
+      ' The saving against diesel would then be '+gbp(bestDiesel)+'.</p></section>';
+  }
+  h += chart(rows);
+  h += '<section class="panel"><h2>Vehicle</h2><div class="legend" style="margin-top:0">'+
+    '<span>Changan <b>Deepal S07</b></span><span>Battery <b>80 kWh</b></span><span>Official range <b>295 mi</b></span>'+
+    (e.measured ? '<span>Odometer <b>'+e.odo+' mi</b> on '+short(e.date)+'</span>' : '')+'</div>'+
+    '<p class="note">'+(e.measured ? 'Miles per kWh is '+(e.miles)+' odometer miles divided by the '+k1(e.k)+' kWh charged at home up to '+short(e.date)+
+    '. It includes charging losses and assumes the battery is about as full now as when tracking began.' :
+    'No odometer reading yet, so miles use '+s.fallbackEff+' miles per kWh. Add a reading in Settings.')+'</p></section>';
+  return h;
+}
+function offHours(s){ let n = 0; const a = hm(s.offStart), b = hm(s.offEnd); for (let m = 0; m < 1440; m++) if (isOff(m,a,b)) n++; return n/60; }
+
+function chart(rows){
+  const live = rows.filter(r => r.kwh > 0); if (!live.length) return "";
+  const ds = live.map(r => r.d).sort(), first = ds[0], last = ds[ds.length-1];
+  const span = Math.round((dObj(last) - dObj(first))/864e5) + 1, byWeek = span > 31;
+  const buckets = [];
+  if (byWeek) { for (let w = weekStart(first); w <= last; w = addDays(w,7)) buckets.push({k:w, lab:short(w), name:"Week of "+short(w)}); }
+  else { for (let d = first; d <= last; d = addDays(d,1)) buckets.push({k:d, lab:String(dObj(d).getUTCDate()), name:nice(d)}); }
+  buckets.forEach(b => { const rs = live.filter(r => (byWeek ? weekStart(r.d) : r.d) === b.k); const t = total(rs);
+    const man = rs.filter(r => r.manual).reduce((n,r) => n + r.cost, 0);
+    b.o = rs.filter(r => !r.manual).reduce((n,r) => n + r.offK*S().offRate/100, 0); b.p = t.cost - b.o; b.cost = t.cost; b.kwh = t.kwh; });
+  const mx = Math.max(...buckets.map(b => b.cost)), top = niceMax(mx);
+  const every = buckets.length > 16 ? 2 : 1;
+  let h = '<section class="panel"><h2>Cost per '+(byWeek?"week":"day")+'</h2><div class="chart">'+
+    '<div class="yax"><span>'+gbp(top)+'</span><span>'+gbp(top/2)+'</span><span>£0</span></div><div class="plot">';
+  buckets.forEach(b => { h += '<button type="button" class="bar'+(picked===b.k?" sel":"")+'" data-pick="'+b.k+'" aria-label="'+esc(b.name)+', '+gbp(b.cost)+'">'+
+    (b.p > 0.004 ? '<i class="p" style="height:'+(b.p/top*100)+'%"></i>' : "")+(b.o > 0.004 ? '<i class="o" style="height:'+(b.o/top*100)+'%"></i>' : "")+'</button>'; });
+  h += '</div><div class="xax">'+buckets.map((b,i) => '<span>'+(i%every===0?b.lab:"")+'</span>').join("")+'</div></div>';
+  const pb = buckets.find(b => b.k === picked);
+  h += '<div class="pick">'+(pb ? '<b>'+esc(pb.name)+'</b> · '+gbp(pb.cost)+' for '+k1(pb.kwh)+' kWh (off-peak '+gbp(pb.o)+', peak '+gbp(pb.p)+')' :
+    '<span style="color:var(--muted)">Tap a bar for that '+(byWeek?"week":"day")+'’s figures.</span>')+'</div>'+
+    '<div class="legend"><span><i class="dot o"></i>Off-peak</span><span><i class="dot p"></i>Peak</span></div></section>';
+  return h;
+}
+function niceMax(v){ const steps = [1,2,4,5,10,20,30,40,50,100,200,400,500,1000]; for (const x of steps) if (v <= x) return x; return Math.ceil(v/500)*500; }
+
+function viewCharges(rows){
+  if (!rows.length) return '<div class="panel empty">No charges in '+esc(periodName())+'.</div>';
+  let h = '<div class="chg">';
+  rows.forEach(r => {
+    const isOpen = open === r.key;
+    if (r.kwh <= 0) {
+      h += '<button type="button" class="card zero" data-open="'+r.key+'"><div class="top"><span class="d">'+nice(r.d)+' · '+r.t+'</span><span class="meta">No energy · '+durTxt(r.dur)+'</span></div>'+
+        (isOpen ? moreBox(r) : "")+'</button>';
+      return;
+    }
+    h += '<div class="card"><button type="button" data-open="'+r.key+'" style="all:unset;display:block;width:100%;cursor:pointer" aria-expanded="'+isOpen+'">'+
+      '<div class="top"><span class="d">'+nice(r.d)+'</span><span class="c">'+gbp(r.cost)+'</span></div>'+
+      '<div class="meta">Plugged in '+r.t+' for '+durTxt(r.dur)+' · '+k1(r.kwh)+' kWh · '+(r.cost/r.kwh*100).toFixed(1)+'p per kWh</div>'+
+      (r.manual ? "" : splitBar(r.offK, r.peakK))+'</button>'+(isOpen ? moreBox(r) : "")+'</div>';
+  });
+  return h + '</div><p class="note" style="text-align:center">Tap a charge for its detail.</p>';
+}
+function moreBox(r){
+  const s = S(); let h = '<div class="more">';
+  if (r.kwh > 0) {
+    h += r.manual ? '<div>Cost entered by hand.</div>' :
+      (r.mode==="window" ? '<div>Priced entirely at the off-peak rate, as the schedule only charges inside the window.</div>' : '<div>Charging ran '+fmtHM(r.begin)+' to '+fmtHM(r.end)+'. Off-peak <b>'+k1(r.offK)+' kWh</b> ('+gbp(r.offK*s.offRate/100)+'), peak <b>'+k1(r.peakK)+' kWh</b> ('+gbp(r.peakK*s.peakRate/100)+').</div>');
+    h += '<div>About <b>'+Math.round(r.miles)+' miles</b> of driving. The same miles on diesel: <b>'+gbp(r.diesel)+'</b>. All off-peak it would cost '+gbp(r.best)+'.</div>';
+    if (!r.manual) h += '<div class="seg" role="group" aria-label="When charging started"><button type="button" data-mode="window" data-key="'+r.key+'" class="'+(r.mode==="window"?"on":"")+'">Off-peak only</button>'+
+      '<button type="button" data-mode="sched" data-key="'+r.key+'" class="'+(r.mode==="sched"?"on":"")+'">Ran past '+esc(s.offEnd)+'</button>'+
+      '<button type="button" data-mode="plug" data-key="'+r.key+'" class="'+(r.mode==="plug"?"on":"")+'">On plug-in</button></div>';
+  }
+  h += '<div class="btnrow"><button type="button" class="btn warn" data-del="'+r.key+'">'+(armed===r.key?"Tap again to remove":"Remove this charge")+'</button></div></div>';
+  return h;
+}
+
+function viewDays(rows){
+  const live = rows.filter(r => r.kwh > 0);
+  if (!live.length) return '<div class="panel empty">No charges in '+esc(periodName())+'.</div>';
+  const t = total(live);
+  let h = '<section class="panel"><h2>Per day · '+esc(periodName())+'</h2><div class="tw"><table><thead><tr><th>Day</th><th>kWh</th><th>Off-pk</th><th>Peak</th><th>Cost</th><th>Miles</th><th>Diesel</th></tr></thead><tbody>';
+  groupBy(live, r => r.d).forEach(g => { const x = total(g[1]);
+    h += '<tr><td>'+nice(g[0])+'</td><td>'+k1(x.kwh)+'</td><td class="o">'+k1(x.offK)+'</td><td class="p">'+k1(x.peakK)+'</td><td><b>'+gbp(x.cost)+'</b></td><td>'+Math.round(x.miles)+'</td><td>'+gbp(x.diesel)+'</td></tr>'; });
+  h += '</tbody><tfoot><tr><td>Total</td><td>'+k1(t.kwh)+'</td><td class="o">'+k1(t.offK)+'</td><td class="p">'+k1(t.peakK)+'</td><td>'+gbp(t.cost)+'</td><td>'+Math.round(t.miles)+'</td><td>'+gbp(t.diesel)+'</td></tr></tfoot></table></div>'+
+    '<p class="note">A day is the date the car was plugged in, as SALUS lists it, so an overnight charge counts on the evening it began.</p></section>';
+  return h;
+}
+function viewWeeks(rows){
+  const live = rows.filter(r => r.kwh > 0);
+  if (!live.length) return '<div class="panel empty">No charges in '+esc(periodName())+'.</div>';
+  let h = '<div class="wk">';
+  groupBy(live, r => weekStart(r.d)).forEach(g => { const x = total(g[1]), end = addDays(g[0], 6);
+    h += '<section class="panel"><h3>'+nice(g[0])+' to '+nice(end)+'</h3><div class="top" style="display:flex;justify-content:space-between;align-items:baseline">'+
+      '<span class="note" style="margin:0">'+x.n+' charge'+(x.n===1?"":"s")+' · '+k1(x.kwh)+' kWh · '+(x.cost/x.kwh*100).toFixed(1)+'p per kWh</span>'+
+      '<span class="num" style="font-size:24px;font-weight:700">'+gbp(x.cost)+'</span></div><div style="margin-top:10px">'+splitBar(x.offK, x.peakK)+'</div>'+
+      '<div class="kv"><div><b>'+Math.round(x.miles)+'</b><small>miles</small></div><div><b>'+gbp(x.diesel)+'</b><small>on diesel</small></div>'+
+      '<div><b style="color:var(--good)">'+gbp(x.diesel - x.cost)+'</b><small>saved</small></div></div></section>'; });
+  return h + '</div>';
+}
+
+function viewSettings(){
+  const s = S(), od = odoList();
+  const f = (id, lab, val, attr) => '<label>'+lab+'<input id="'+id+'" data-set="'+id.slice(2)+'" value="'+esc(val)+'" '+(attr||'type="number" inputmode="decimal" step="any"')+'></label>';
+  let h = '<section class="panel"><h2>Add charges from SALUS</h2><p class="note" style="margin-top:0">Paste one charge per line, as date, start time, duration and kWh. Example: 28/11 18:05 12h 30m 24.6</p>'+
+    '<textarea id="paste" placeholder="28/11 18:05 12h 30m 24.6" aria-label="Charges to add"></textarea><div class="btnrow" style="margin-top:8px">'+
+    '<button type="button" class="btn pri" id="doPaste">Add these charges</button></div><div class="msg '+(flash&&flash.at==="paste"?flash.cls:"")+'" role="status">'+(flash&&flash.at==="paste"?esc(flash.text):"")+'</div></section>';
+
+  h += '<section class="panel"><h2>Add one charge by hand</h2><div class="form">'+
+    '<label>Date<input id="a_d" type="date" value="'+today()+'"></label><label>Plug-in time<input id="a_t" type="time" value="18:00"></label>'+
+    '<label>Hours plugged in<input id="a_h" type="number" inputmode="decimal" step="any" value="12"></label><label>kWh<input id="a_k" type="number" inputmode="decimal" step="any"></label>'+
+    '<label class="wide">Cost in £, only for a public charge with its own price<input id="a_c" type="number" inputmode="decimal" step="any" placeholder="Leave empty for home tariff"></label></div>'+
+    '<div class="btnrow" style="margin-top:10px"><button type="button" class="btn pri" id="doAdd">Add charge</button></div>'+
+    '<div class="msg '+(flash&&flash.at==="add"?flash.cls:"")+'" role="status">'+(flash&&flash.at==="add"?esc(flash.text):"")+'</div></section>';
+
+  h += '<section class="panel"><h2>Odometer readings</h2>'+od.map(o => '<div class="odo"><span>'+nice(o.d)+' '+o.d.slice(0,4)+'</span><span><b>'+o.mi+' mi</b> <button type="button" data-odel="'+o.d+'">Remove</button></span></div>').join("")+
+    '<div class="form" style="margin-top:10px"><label>Date<input id="o_d" type="date" value="'+today()+'"></label><label>Miles on the clock<input id="o_m" type="number" inputmode="numeric"></label></div>'+
+    '<div class="btnrow" style="margin-top:10px"><button type="button" class="btn" id="doOdo">Save reading</button></div>'+
+    '<p class="note">The latest reading sets miles per kWh, which drives the diesel comparison.</p></section>';
+
+  h += '<section class="panel"><h2>Electricity tariff</h2><div class="form">'+
+    f("s_offRate","Off-peak, pence per kWh",s.offRate)+f("s_peakRate","Peak, pence per kWh",s.peakRate)+
+    f("s_offStart","Off-peak starts",s.offStart,'type="time"')+f("s_offEnd","Off-peak ends",s.offEnd,'type="time"')+
+    f("s_kw","Charger power, kW",s.kw)+
+    '<label>Charging normally happens<select id="s_mode" data-set="mode"><option value="window"'+(s.mode==="window"?" selected":"")+'>Only inside the off-peak window</option><option value="plug"'+(s.mode==="plug"?" selected":"")+'>From plug-in until full</option><option value="sched"'+(s.mode==="sched"?" selected":"")+'>From off-peak start until full</option></select></label></div>'+
+    '<p class="note">SALUS records when the car was plugged in and the total kWh, not when the energy flowed. The app assumes the charger runs at this power from the start point you choose until the kWh are delivered. You can change the start point on any single charge.</p></section>';
+
+  h += '<section class="panel"><h2>Diesel comparison</h2><div class="form">'+
+    f("s_diesel","Diesel, £ per litre",s.diesel)+f("s_mpg","Diesel car, miles per gallon",s.mpg)+
+    f("s_startOdo","Odometer when tracking began",s.startOdo)+f("s_fallbackEff","Miles per kWh if no reading",s.fallbackEff)+'</div></section>';
+
+  h += '<section class="panel"><h2>Backup</h2><div class="btnrow"><button type="button" class="btn" id="doCopy">Copy all my data</button>'+
+    '<button type="button" class="btn warn" id="doReset">'+(armed==="reset"?"Tap again to reset":"Reset to supplied data")+'</button></div>'+
+    '<div class="msg '+(flash&&flash.at==="backup"?flash.cls:"")+'" role="status">'+(flash&&flash.at==="backup"?esc(flash.text):"")+'</div>'+
+    '<p class="note">What you add here is kept on this phone only. To restore a backup, paste it into the box at the top of this page.</p></section>';
+  return h;
+}
+
+function render(){
+  const ms = months();
+  if (month === null) month = ms.length ? ms[ms.length-1] : today().slice(0,7);
+  const rows = enrich(allCharges().filter(inPeriod));
+  document.getElementById("period").textContent = periodName();
+  const i = ms.indexOf(month);
+  document.getElementById("prev").disabled = month === "all" || i <= 0;
+  document.getElementById("next").disabled = month === "all" || i < 0 || i >= ms.length-1;
+  document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("on", b.dataset.tab === tab));
+  const v = document.getElementById("view");
+  v.innerHTML = tab === "summary" ? viewSummary(rows) : tab === "charges" ? viewCharges(rows) : tab === "days" ? viewDays(rows) :
+                tab === "weeks" ? viewWeeks(rows) : viewSettings();
+}
+
+/* ---------- Import ---------- */
+function parseLines(text){
+  const out = [], bad = [], now = today();
+  text.split(/\n+/).map(l => l.trim()).filter(Boolean).forEach(l => {
+    const m = l.match(/^(\d{1,2})[\/.\-](\d{1,2})(?:[\/.\-](\d{2,4}))?\s+(\d{1,2})[:.](\d{2})\s+(?:(\d+)\s*h)?\s*(?:(\d+)\s*m)?\s+(\d+(?:\.\d+)?)\s*(?:kwh)?$/i);
+    if (!m || (m[6] == null && m[7] == null)) { bad.push(l); return; }
+    let y = m[3] ? (+m[3] < 100 ? 2000 + (+m[3]) : +m[3]) : +now.slice(0,4);
+    let d = y+"-"+String(+m[2]).padStart(2,"0")+"-"+String(+m[1]).padStart(2,"0");
+    if (!m[3] && d > addDays(now, 1)) d = (y-1)+d.slice(4);
+    out.push([d, String(+m[4]).padStart(2,"0")+":"+m[5], (+(m[6]||0))*60 + (+(m[7]||0)), +m[8]]);
+  });
+  return {out, bad};
+}
+function addCharges(list){
+  let n = 0;
+  list.forEach(r => { const k = r[0]+" "+r[1]; st.hidden = st.hidden.filter(x => x !== k);
+    st.extra = st.extra.filter(x => x[0]+" "+x[1] !== k); st.extra.push(r); n++; });
+  save(); return n;
+}
+
+/* ---------- Events ---------- */
+document.getElementById("tabs").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return;
+  tab = b.dataset.tab; open = null; armed = null; flash = null; render(); window.scrollTo(0,0); });
+document.getElementById("prev").addEventListener("click", () => { const ms = months(), i = ms.indexOf(month); if (i > 0) { month = ms[i-1]; picked = null; render(); } });
+document.getElementById("next").addEventListener("click", () => { const ms = months(), i = ms.indexOf(month); if (i >= 0 && i < ms.length-1) { month = ms[i+1]; picked = null; render(); } });
+document.getElementById("period").addEventListener("click", () => { const ms = months(); month = month === "all" ? (ms[ms.length-1] || today().slice(0,7)) : "all"; picked = null; render(); });
+
+document.getElementById("view").addEventListener("click", e => {
+  const t = e.target.closest("[data-pick],[data-mode],[data-del],[data-open],[data-odel],#doPaste,#doAdd,#doOdo,#doCopy,#doReset"); if (!t) return;
+  if (t.dataset.pick) { picked = picked === t.dataset.pick ? null : t.dataset.pick; render(); return; }
+  if (t.dataset.mode) { const k = t.dataset.key; st.ov[k] = Object.assign({}, st.ov[k], {mode:t.dataset.mode}); save(); render(); return; }
+  if (t.dataset.del) { const k = t.dataset.del; if (armed !== k) { armed = k; render(); return; }
+    st.hidden.push(k); st.extra = st.extra.filter(x => x[0]+" "+x[1] !== k); delete st.ov[k]; armed = null; open = null; save(); render(); return; }
+  if (t.dataset.open) { open = open === t.dataset.open ? null : t.dataset.open; armed = null; render(); return; }
+  if (t.dataset.odel) { const d = t.dataset.odel; st.odo = st.odo.filter(x => x[0] !== d); st.odoHidden.push(d); save(); render(); return; }
+  if (t.id === "doPaste") {
+    const text = document.getElementById("paste").value.trim();
+    if (!text) { flash = {at:"paste", cls:"bad", text:"Paste at least one line first."}; render(); return; }
+    if (text[0] === "{") { try { const o = JSON.parse(text); if (!o || !Array.isArray(o.extra)) throw 0; st = Object.assign({set:{},extra:[],hidden:[],ov:{},odo:[],odoHidden:[]}, o); save();
+        flash = {at:"paste", cls:"ok", text:"Backup restored."}; } catch(err) { flash = {at:"paste", cls:"bad", text:"That backup could not be read. Copy it again and paste the whole text."}; }
+      month = null; render(); return; }
+    const r = parseLines(text), n = addCharges(r.out);
+    flash = r.bad.length ? {at:"paste", cls:"bad", text:"Added "+n+". Could not read: "+r.bad.join(" | ")+". Use the form 28/11 18:05 12h 30m 24.6"} :
+      {at:"paste", cls:"ok", text:"Added "+n+" charge"+(n===1?"":"s")+"."};
+    if (n) month = r.out.map(x => x[0].slice(0,7)).sort().pop();
+    render(); return;
+  }
+  if (t.id === "doAdd") {
+    const d = document.getElementById("a_d").value, tm = document.getElementById("a_t").value, hrs = parseFloat(document.getElementById("a_h").value),
+          k = parseFloat(document.getElementById("a_k").value), c = document.getElementById("a_c").value;
+    if (!d || !tm || !(hrs > 0) || !(k >= 0)) { flash = {at:"add", cls:"bad", text:"Enter a date, a time, the hours plugged in and the kWh."}; render(); return; }
+    addCharges([[d, tm, Math.round(hrs*60), k]]);
+    if (c !== "" && parseFloat(c) >= 0) { st.ov[d+" "+tm] = {cost: parseFloat(c)}; save(); }
+    flash = {at:"add", cls:"ok", text:"Added "+k+" kWh on "+nice(d)+"."}; month = d.slice(0,7); render(); return;
+  }
+  if (t.id === "doOdo") { const d = document.getElementById("o_d").value, m = parseFloat(document.getElementById("o_m").value);
+    if (d && m >= 0) { st.odoHidden = st.odoHidden.filter(x => x !== d); st.odo = st.odo.filter(x => x[0] !== d); st.odo.push([d, m]); save(); render(); } return; }
+  if (t.id === "doCopy") { const text = JSON.stringify(st);
+    const done = ok => { flash = {at:"backup", cls: ok?"ok":"bad", text: ok ? "Copied. Paste it into Notes to keep it safe." : "Copying was blocked. Select the text in the box at the top of this page and copy it."};
+      render(); if (!ok) { const p = document.getElementById("paste"); if (p) p.value = text; } };
+    try { navigator.clipboard.writeText(text).then(() => done(true), () => done(false)); } catch(err) { done(false); } return; }
+  if (t.id === "doReset") { if (armed !== "reset") { armed = "reset"; render(); return; }
+    st = {set:{}, extra:[], hidden:[], ov:{}, odo:[], odoHidden:[]}; save(); armed = null; month = null; flash = {at:"backup", cls:"ok", text:"Reset."}; render(); }
+});
+document.getElementById("view").addEventListener("change", e => {
+  const k = e.target.dataset && e.target.dataset.set; if (!k) return;
+  let v = e.target.value;
+  if (k !== "offStart" && k !== "offEnd" && k !== "mode") { v = parseFloat(v); if (!(v >= 0) || ((k === "kw" || k === "mpg") && v <= 0)) { render(); return; } }
+  else if (!v) { render(); return; }
+  st.set[k] = v; save();
+});
+
+render();
+if ("serviceWorker" in navigator && window.top === window && location.protocol === "https:") {
+  try { navigator.serviceWorker.register("sw.js").catch(() => {}); } catch(e) {}
+}
+</script>
+</body>
+</html>
