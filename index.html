@@ -146,12 +146,43 @@ nav button{border:0;background:none;padding:8px 2px;border-radius:10px;font-size
 nav button svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 nav button.on{color:var(--accent)}
 .empty{color:var(--muted);text-align:center;padding:28px 10px}
+/* lock screen */
+#lock{position:fixed;inset:0;z-index:20;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;
+  padding:calc(env(safe-area-inset-top) + 24px) 24px calc(env(safe-area-inset-bottom) + 24px);text-align:center}
+#lock[hidden]{display:none}
+#lock img{width:84px;height:84px;border-radius:20px}
+#lock .wel{color:var(--muted);font-size:14px;letter-spacing:.4px}
+#lock h1{margin:2px 0 0;font-family:var(--display);font-size:30px;font-weight:700;text-wrap:balance}
+#lock h1 span{color:var(--off)}
+#lock .reg{display:inline-block;margin-top:8px;padding:5px 14px;border-radius:8px;background:var(--surface);border:1px solid var(--line);
+  font-family:var(--display);font-weight:600;font-size:17px;letter-spacing:1.5px}
+.dots{display:flex;gap:14px;margin-top:6px}
+.dots i{width:14px;height:14px;border-radius:50%;border:2px solid var(--muted)}
+.dots i.f{background:var(--off);border-color:var(--off)}
+.pad{display:grid;grid-template-columns:repeat(3,72px);gap:12px}
+.pad button{height:72px;border-radius:50%;border:1px solid var(--line);background:var(--surface);font-family:var(--display);font-size:26px;font-weight:600}
+.pad button.x{border:0;background:none;font-size:15px;color:var(--muted);font-family:var(--body)}
+#lockmsg{min-height:20px;font-size:14px;color:var(--muted)}
+#lockmsg.bad{color:var(--peak)}
+.app[hidden],nav[hidden]{display:none}
 @media (max-width:360px){.kv{grid-template-columns:1fr 1fr}.hero .big{font-size:40px}}
 @media (prefers-reduced-motion:no-preference){.cmp .fill,.split i{transition:width .3s}}
 </style>
 </head>
 <body>
-<div class="app">
+<div id="lock">
+  <img src="icon-192.png" alt="">
+  <div><div class="wel">Welcome to</div><h1>EV Monitor <span>S07</span></h1><div class="reg">YS76 WFE</div></div>
+  <div class="dots" id="dots" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+  <div id="lockmsg" role="status">Enter your 4-digit code</div>
+  <div class="pad" id="pad">
+    <button type="button">1</button><button type="button">2</button><button type="button">3</button>
+    <button type="button">4</button><button type="button">5</button><button type="button">6</button>
+    <button type="button">7</button><button type="button">8</button><button type="button">9</button>
+    <span></span><button type="button">0</button><button type="button" class="x" data-back="1">Delete</button>
+  </div>
+</div>
+<div class="app" id="app" hidden>
   <header>
     <div class="brand">EV Cost <span>S07</span></div>
     <div class="stepper">
@@ -162,7 +193,7 @@ nav button.on{color:var(--accent)}
   </header>
   <main id="view"></main>
 </div>
-<nav><div class="in" id="tabs">
+<nav id="nav" hidden><div class="in" id="tabs">
   <button type="button" data-tab="summary"><svg viewBox="0 0 24 24"><path d="M4 13a8 8 0 1 1 16 0"/><path d="M12 13l4-5"/><path d="M5 19h14"/></svg>Summary</button>
   <button type="button" data-tab="charges"><svg viewBox="0 0 24 24"><path d="M13 3L5 14h6l-1 7 8-11h-6z"/></svg>Charges</button>
   <button type="button" data-tab="days"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>Days</button>
@@ -419,6 +450,16 @@ function viewWeeks(rows){
   return h + '</div>';
 }
 
+const ADDBTN = '<button type="button" class="btn pri" data-go="add" style="width:100%;padding:13px">+ Add a charge</button>';
+function viewAdd(){
+  return '<section class="panel"><h2>Add a charge</h2><p class="note" style="margin-top:0">Copy the row from the SALUS history screen.</p><div class="form">'+
+    '<label>Date<input id="a_d" type="date" value="'+today()+'"></label><label>Start time<input id="a_t" type="time" value="18:00"></label>'+
+    '<label>Duration, hours<input id="a_h" type="number" inputmode="numeric" min="0" placeholder="12"></label><label>Duration, minutes<input id="a_m" type="number" inputmode="numeric" min="0" max="59" placeholder="30"></label>'+
+    '<label class="wide">Energy, kWh<input id="a_k" type="number" inputmode="decimal" step="any" placeholder="24.6"></label>'+
+    '<label class="wide">Cost in £, only for a public charger with its own price<input id="a_c" type="number" inputmode="decimal" step="any" placeholder="Leave empty for home charging"></label></div>'+
+    '<div class="btnrow" style="margin-top:12px"><button type="button" class="btn pri" id="doAdd">Save charge</button><button type="button" class="btn" data-go="charges">Cancel</button></div>'+
+    '<div class="msg '+(flash&&flash.at==="add"?flash.cls:"")+'" role="status">'+(flash&&flash.at==="add"?esc(flash.text):"")+'</div></section>';
+}
 function viewSettings(){
   const s = S(), od = odoList();
   const f = (id, lab, val, attr) => '<label>'+lab+'<input id="'+id+'" data-set="'+id.slice(2)+'" value="'+esc(val)+'" '+(attr||'type="number" inputmode="decimal" step="any"')+'></label>';
@@ -426,12 +467,7 @@ function viewSettings(){
     '<textarea id="paste" placeholder="28/11 18:05 12h 30m 24.6" aria-label="Charges to add"></textarea><div class="btnrow" style="margin-top:8px">'+
     '<button type="button" class="btn pri" id="doPaste">Add these charges</button></div><div class="msg '+(flash&&flash.at==="paste"?flash.cls:"")+'" role="status">'+(flash&&flash.at==="paste"?esc(flash.text):"")+'</div></section>';
 
-  h += '<section class="panel"><h2>Add one charge by hand</h2><div class="form">'+
-    '<label>Date<input id="a_d" type="date" value="'+today()+'"></label><label>Plug-in time<input id="a_t" type="time" value="18:00"></label>'+
-    '<label>Hours plugged in<input id="a_h" type="number" inputmode="decimal" step="any" value="12"></label><label>kWh<input id="a_k" type="number" inputmode="decimal" step="any"></label>'+
-    '<label class="wide">Cost in £, only for a public charge with its own price<input id="a_c" type="number" inputmode="decimal" step="any" placeholder="Leave empty for home tariff"></label></div>'+
-    '<div class="btnrow" style="margin-top:10px"><button type="button" class="btn pri" id="doAdd">Add charge</button></div>'+
-    '<div class="msg '+(flash&&flash.at==="add"?flash.cls:"")+'" role="status">'+(flash&&flash.at==="add"?esc(flash.text):"")+'</div></section>';
+  h += '<section class="panel"><h2>Add one charge</h2><div class="btnrow"><button type="button" class="btn pri" data-go="add">+ Add a charge</button></div></section>';
 
   h += '<section class="panel"><h2>Odometer readings</h2>'+od.map(o => '<div class="odo"><span>'+nice(o.d)+' '+o.d.slice(0,4)+'</span><span><b>'+o.mi+' mi</b> <button type="button" data-odel="'+o.d+'">Remove</button></span></div>').join("")+
     '<div class="form" style="margin-top:10px"><label>Date<input id="o_d" type="date" value="'+today()+'"></label><label>Miles on the clock<input id="o_m" type="number" inputmode="numeric"></label></div>'+
@@ -466,7 +502,7 @@ function render(){
   document.getElementById("next").disabled = month === "all" || i < 0 || i >= ms.length-1;
   document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("on", b.dataset.tab === tab));
   const v = document.getElementById("view");
-  v.innerHTML = tab === "summary" ? viewSummary(rows) : tab === "charges" ? viewCharges(rows) : tab === "days" ? viewDays(rows) :
+  v.innerHTML = tab === "add" ? viewAdd() : tab === "summary" ? ADDBTN + viewSummary(rows) : tab === "charges" ? ADDBTN + viewCharges(rows) : tab === "days" ? viewDays(rows) :
                 tab === "weeks" ? viewWeeks(rows) : viewSettings();
 }
 
@@ -498,7 +534,8 @@ document.getElementById("next").addEventListener("click", () => { const ms = mon
 document.getElementById("period").addEventListener("click", () => { const ms = months(); month = month === "all" ? (ms[ms.length-1] || today().slice(0,7)) : "all"; picked = null; render(); });
 
 document.getElementById("view").addEventListener("click", e => {
-  const t = e.target.closest("[data-pick],[data-mode],[data-del],[data-open],[data-odel],#doPaste,#doAdd,#doOdo,#doCopy,#doReset"); if (!t) return;
+  const t = e.target.closest("[data-go],[data-pick],[data-mode],[data-del],[data-open],[data-odel],#doPaste,#doAdd,#doOdo,#doCopy,#doReset"); if (!t) return;
+  if (t.dataset.go) { tab = t.dataset.go; flash = null; armed = null; render(); window.scrollTo(0,0); return; }
   if (t.dataset.pick) { picked = picked === t.dataset.pick ? null : t.dataset.pick; render(); return; }
   if (t.dataset.mode) { const k = t.dataset.key; st.ov[k] = Object.assign({}, st.ov[k], {mode:t.dataset.mode}); save(); render(); return; }
   if (t.dataset.del) { const k = t.dataset.del; if (armed !== k) { armed = k; render(); return; }
@@ -518,12 +555,14 @@ document.getElementById("view").addEventListener("click", e => {
     render(); return;
   }
   if (t.id === "doAdd") {
-    const d = document.getElementById("a_d").value, tm = document.getElementById("a_t").value, hrs = parseFloat(document.getElementById("a_h").value),
-          k = parseFloat(document.getElementById("a_k").value), c = document.getElementById("a_c").value;
-    if (!d || !tm || !(hrs > 0) || !(k >= 0)) { flash = {at:"add", cls:"bad", text:"Enter a date, a time, the hours plugged in and the kWh."}; render(); return; }
-    addCharges([[d, tm, Math.round(hrs*60), k]]);
+    const g = id => document.getElementById(id).value;
+    const d = g("a_d"), tm = g("a_t"), k = parseFloat(g("a_k")), c = g("a_c");
+    let mins = (parseInt(g("a_h"), 10) || 0) * 60 + (parseInt(g("a_m"), 10) || 0);
+    if (!d || !tm || !(k >= 0)) { flash = {at:"add", cls:"bad", text:"Enter the date, the start time and the kWh."}; render(); return; }
+    if (mins <= 0) mins = 60;
+    addCharges([[d, tm, mins, k]]);
     if (c !== "" && parseFloat(c) >= 0) { st.ov[d+" "+tm] = {cost: parseFloat(c)}; save(); }
-    flash = {at:"add", cls:"ok", text:"Added "+k+" kWh on "+nice(d)+"."}; month = d.slice(0,7); render(); return;
+    flash = null; month = d.slice(0,7); tab = "charges"; open = d+" "+tm; render(); window.scrollTo(0,0); return;
   }
   if (t.id === "doOdo") { const d = document.getElementById("o_d").value, m = parseFloat(document.getElementById("o_m").value);
     if (d && m >= 0) { st.odoHidden = st.odoHidden.filter(x => x !== d); st.odo = st.odo.filter(x => x[0] !== d); st.odo.push([d, m]); save(); render(); } return; }
@@ -541,6 +580,23 @@ document.getElementById("view").addEventListener("change", e => {
   else if (!v) { render(); return; }
   st.set[k] = v; save();
 });
+
+/* ---------- Lock screen ---------- */
+const CODE = "0786";
+let entered = "";
+function unlock(){ document.getElementById("lock").hidden = true; document.getElementById("app").hidden = false; document.getElementById("nav").hidden = false;
+  try { sessionStorage.setItem("evcost-open", "1"); } catch(e) {} }
+function drawDots(){ document.querySelectorAll("#dots i").forEach((d,i) => d.classList.toggle("f", i < entered.length)); }
+function press(k){
+  const msg = document.getElementById("lockmsg");
+  if (k === "back") entered = entered.slice(0,-1); else if (entered.length < 4) entered += k;
+  drawDots();
+  if (entered.length === 4) { if (entered === CODE) unlock(); else { msg.textContent = "That code is not right. Try again."; msg.className = "bad"; entered = ""; setTimeout(drawDots, 250); } }
+  else if (entered.length === 1) { msg.textContent = "Enter your 4-digit code"; msg.className = ""; }
+}
+document.getElementById("pad").addEventListener("click", e => { const b = e.target.closest("button"); if (b) press(b.dataset.back ? "back" : b.textContent); });
+document.addEventListener("keydown", e => { if (document.getElementById("lock").hidden) return; if (/^[0-9]$/.test(e.key)) press(e.key); else if (e.key === "Backspace") press("back"); });
+try { if (sessionStorage.getItem("evcost-open") === "1") unlock(); } catch(e) {}
 
 render();
 if ("serviceWorker" in navigator && window.top === window && location.protocol === "https:") {

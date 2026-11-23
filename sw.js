@@ -1,5 +1,5 @@
 /* EV Cost S07 offline cache. Bump VERSION whenever index.html changes. */
-const VERSION = "evcost-s07-4";
+const VERSION = "evcost-s07-6";
 const SHELL = ["./", "index.html", "manifest.json", "icon-180.png", "icon-192.png", "icon-512.png"];
 
 self.addEventListener("install", e => {
